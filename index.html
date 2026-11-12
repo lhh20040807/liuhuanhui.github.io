@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>欢辉的工作台</title>
+<style>
+  :root {
+    --bg: #070a12;
+    --card: rgba(255,255,255,.045);
+    --card-border: rgba(255,255,255,.09);
+    --text: #e8eaf0;
+    --text-2: #8b93a7;
+    --accent1: #6366f1;
+    --accent2: #22d3ee;
+    --grad: linear-gradient(135deg, #6366f1, #22d3ee);
+    --green: #34d399;
+    --red: #f87171;
+    --amber: #fbbf24;
+    --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 28px 16px 72px;
+    position: relative;
+    overflow-x: hidden;
+  }
+  /* 背景微光 */
+  body::before, body::after {
+    content: ''; position: fixed; border-radius: 50%; filter: blur(110px);
+    pointer-events: none; z-index: 0;
+  }
+  body::before { width: 480px; height: 480px; top: -160px; left: -120px; background: rgba(99,102,241,.22); }
+  body::after  { width: 420px; height: 420px; bottom: -140px; right: -100px; background: rgba(34,211,238,.14); }
+  .wrap { max-width: 700px; margin: 0 auto; position: relative; z-index: 1; }
+
+  /* ---------- 头部 ---------- */
+  header { margin-bottom: 22px; }
+  .title-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  h1 {
+    font-size: 23px; font-weight: 800; letter-spacing: .5px;
+    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .date-nav { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); position: relative; }
+  .date-nav button {
+    border: 1px solid var(--card-border); background: var(--card); color: var(--text-2);
+    width: 28px; height: 28px; border-radius: 8px; cursor: pointer; font-size: 13px; line-height: 1;
+    transition: all .15s;
+  }
+  .date-nav button:hover { border-color: var(--accent2); color: var(--accent2); }
+  .today-tag {
+    font-size: 11px; padding: 2px 9px; border-radius: 99px; display: none;
+    color: #67e8f9; background: rgba(34,211,238,.12); border: 1px solid rgba(34,211,238,.3);
+  }
+  .today-tag.show { display: inline-block; }
+
+  /* ---------- 日历弹层 ---------- */
+  #dateLabel { cursor: pointer; padding: 4px 9px; border-radius: 7px; transition: all .15s; user-select: none; }
+  #dateLabel:hover { background: rgba(255,255,255,.08); color: var(--text); }
+  .cal-pop {
+    display: none; position: absolute; top: 38px; right: 0; z-index: 60;
+    background: #12161f; border: 1px solid var(--card-border); border-radius: 13px;
+    padding: 14px; width: 268px; box-shadow: 0 14px 44px rgba(0,0,0,.55);
+  }
+  .cal-pop.show { display: block; }
+  .cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .cal-title { font-size: 13px; font-weight: 600; color: var(--text); }
+  .cal-head button {
+    border: 1px solid var(--card-border); background: none; color: var(--text-2);
+    width: 24px; height: 24px; border-radius: 6px; cursor: pointer; font-size: 12px; line-height: 1;
+  }
+  .cal-head button:hover { color: var(--accent2); border-color: var(--accent2); }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .cal-wd { font-size: 10px; color: var(--text-2); text-align: center; padding: 4px 0; }
+  .cal-day {
+    position: relative; font-size: 12px; text-align: center; padding: 5px 0;
+    border-radius: 7px; cursor: pointer; color: var(--text); transition: background .12s;
+  }
+  .cal-day:hover { background: rgba(99,102,241,.2); }
+  .cal-day.blank { cursor: default; background: none !important; }
+  .cal-day.today { box-shadow: inset 0 0 0 1px rgba(34,211,238,.6); }
+  .cal-day.selected { background: var(--grad); color: #fff; font-weight: 700; }
+  .cal-day .dot {
+    position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%; background: var(--accent2);
+  }
+  .cal-day.selected .dot { background: #fff; }
+  .cal-foot { margin-top: 10px; text-align: center; }
+  .cal-foot button {
+    border: none; background: none; color: #67e8f9; font-size: 12px; cursor: pointer; padding: 4px 10px;
+  }
+  .cal-foot button:hover { text-decoration: underline; }
+
+  .progress-wrap { margin-top: 16px; }
+  .progress-meta { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; }
+  .progress-text { font-size: 12px; color: var(--text-2); }
+  .progress-pct {
+    font-size: 15px; font-weight: 700;
+    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+    transition: opacity .2s;
+  }
+  .progress-bar {
+    height: 8px; background: rgba(255,255,255,.07); border-radius: 99px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; width: 0; border-radius: 99px; background: var(--grad);
+    box-shadow: 0 0 12px rgba(34,211,238,.55);
+    transition: width .35s cubic-bezier(.4,0,.2,1);
+  }
+  .progress-fill.full { box-shadow: 0 0 18px rgba(52,211,153,.8); background: linear-gradient(135deg,#34d399,#22d3ee); }
+
+  /* ---------- 卡片 ---------- */
+  .card {
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: var(--radius); padding: 18px; margin-bottom: 16px;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  }
+  .card h2 {
+    font-size: 14px; font-weight: 600; margin-bottom: 14px; color: var(--text);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card h2::before {
+    content: ''; width: 3px; height: 14px; border-radius: 2px; background: var(--grad); flex-shrink: 0;
+  }
+
+  /* ---------- 添加计划 ---------- */
+  .add-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .add-row input[type="text"] {
+    flex: 1; min-width: 170px; padding: 11px 13px; font-size: 14px; color: var(--text);
+    border: 1px solid var(--card-border); border-radius: 9px; outline: none;
+    background: rgba(255,255,255,.04); transition: border-color .15s;
+  }
+  .add-row input[type="text"]::placeholder { color: var(--text-2); }
+  .add-row input[type="text"]:focus { border-color: var(--accent2); }
+  .add-row select {
+    padding: 11px 10px; font-size: 13px; border: 1px solid var(--card-border);
+    border-radius: 9px; background: rgba(255,255,255,.04); color: var(--text-2); outline: none;
+  }
+  .add-row select option { background: #12161f; color: var(--text); }
+  .btn {
+    padding: 11px 20px; font-size: 14px; border: none; border-radius: 9px;
+    background: var(--grad); color: #fff; cursor: pointer; font-weight: 600;
+    box-shadow: 0 2px 14px rgba(99,102,241,.35); transition: opacity .15s, transform .1s;
+  }
+  .btn:hover { opacity: .92; }
+  .btn:active { transform: scale(.97); }
+  .btn.ghost {
+    background: rgba(99,102,241,.12); color: #a5b4fc;
+    border: 1px solid rgba(99,102,241,.35); box-shadow: none;
+  }
+
+  /* ---------- 计划列表 ---------- */
+  .plan-list { list-style: none; }
+  .plan-item {
+    display: flex; align-items: center; gap: 11px;
+    padding: 11px 4px; border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+  .plan-item:last-child { border-bottom: none; }
+  .plan-item input[type="checkbox"] {
+    width: 18px; height: 18px; accent-color: #22d3ee; cursor: pointer; flex-shrink: 0;
+  }
+  .plan-text { flex: 1; font-size: 14px; word-break: break-all; transition: color .2s; }
+  .plan-item.done .plan-text { text-decoration: line-through; color: var(--text-2); }
+  .badge { font-size: 11px; padding: 2px 9px; border-radius: 99px; flex-shrink: 0; border: 1px solid transparent; }
+  .badge.high { color: var(--red); background: rgba(248,113,113,.1); border-color: rgba(248,113,113,.3); }
+  .badge.mid { color: var(--amber); background: rgba(251,191,36,.1); border-color: rgba(251,191,36,.28); }
+  .badge.low { color: var(--text-2); background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.1); }
+  .del-btn {
+    border: none; background: none; color: var(--text-2); cursor: pointer;
+    font-size: 17px; padding: 2px 7px; border-radius: 7px; flex-shrink: 0; transition: all .15s;
+  }
+  .del-btn:hover { color: var(--red); background: rgba(248,113,113,.1); }
+  .empty { text-align: center; color: var(--text-2); font-size: 13px; padding: 26px 0; }
+
+  /* ---------- 统计 ---------- */
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; background: rgba(255,255,255,.04); padding: 4px; border-radius: 10px; width: fit-content; }
+  .tab {
+    border: none; background: none; color: var(--text-2); font-size: 13px;
+    padding: 6px 18px; border-radius: 8px; cursor: pointer; transition: all .15s;
+  }
+  .tab.active { background: var(--grad); color: #fff; font-weight: 600; }
+  .stat-cards { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+  .stat-card {
+    flex: 1; min-width: 100px; background: rgba(255,255,255,.035);
+    border: 1px solid rgba(255,255,255,.07); border-radius: 11px; padding: 12px 14px;
+  }
+  .stat-num {
+    font-size: 22px; font-weight: 800;
+    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .stat-label { font-size: 11px; color: var(--text-2); margin-top: 3px; }
+
+  .chart { display: flex; align-items: flex-end; gap: 6px; height: 110px; margin-bottom: 6px; }
+  .chart.month { gap: 3px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+  .bar {
+    width: 100%; max-width: 34px; border-radius: 5px 5px 2px 2px;
+    background: var(--grad); min-height: 3px; transition: height .3s ease;
+    box-shadow: 0 0 8px rgba(99,102,241,.25);
+  }
+  .bar.none { background: rgba(255,255,255,.08); box-shadow: none; min-height: 3px; height: 3px !important; }
+  .bar.today { outline: 1px solid rgba(34,211,238,.7); box-shadow: 0 0 12px rgba(34,211,238,.5); }
+  .bar.future { background: rgba(255,255,255,.03); box-shadow: none; min-height: 3px; height: 3px !important; }
+  .bar-label { font-size: 10px; color: var(--text-2); margin-top: 6px; white-space: nowrap; }
+  .bar-label.today { color: #67e8f9; font-weight: 600; }
+
+  .summary-text { font-size: 13.5px; line-height: 1.9; color: var(--text); margin-top: 14px; }
+  .summary-text b { color: #67e8f9; font-weight: 600; }
+
+  /* ---------- 复盘 ---------- */
+  .review-result { display: none; }
+  .review-result.show { display: block; margin-top: 14px; }
+  .review-score {
+    font-size: 30px; font-weight: 800; margin: 4px 0 2px;
+    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .review-sub { font-size: 13px; color: var(--text-2); margin-bottom: 14px; }
+  .review-block { font-size: 14px; line-height: 1.9; margin-bottom: 10px; }
+  .review-block .label { font-weight: 600; }
+  .review-block ul { padding-left: 20px; }
+  .review-tip {
+    background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.25);
+    border-radius: 9px; padding: 11px 13px; font-size: 13px; line-height: 1.8; color: #c7d2fe;
+  }
+  .review-time { font-size: 12px; color: var(--text-2); margin-top: 10px; }
+
+  footer { text-align: center; font-size: 12px; color: var(--text-2); margin-top: 26px; opacity: .7; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title-row">
+      <h1>欢辉的工作台</h1>
+      <div class="date-nav">
+        <button id="prevDay" title="前一天">←</button>
+        <span id="dateLabel"></span>
+        <span class="today-tag" id="todayTag">今天</span>
+        <button id="nextDay" title="后一天">→</button>
+        <div class="cal-pop" id="calPop"></div>
+      </div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-meta">
+        <span class="progress-text" id="progressText"></span>
+        <span class="progress-pct" id="progressPct"></span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+  </header>
+
+  <div class="card">
+    <h2>添加计划</h2>
+    <div class="add-row">
+      <input type="text" id="planInput" placeholder="今天要做的一件事…" maxlength="60">
+      <select id="priorityInput">
+        <option value="mid">普通</option>
+        <option value="high">重要</option>
+        <option value="low">不急</option>
+      </select>
+      <button class="btn" id="addBtn">添加</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>计划清单</h2>
+    <ul class="plan-list" id="planList"></ul>
+    <div class="empty" id="emptyTip">还没有计划，先添加一件今天要做的事吧</div>
+  </div>
+
+  <div class="card">
+    <h2>数据统计</h2>
+    <div class="tabs">
+      <button class="tab active" id="tabWeek">本周</button>
+      <button class="tab" id="tabMonth">本月</button>
+    </div>
+    <div class="stat-cards" id="statCards"></div>
+    <div class="chart" id="chart"></div>
+    <div class="summary-text" id="summaryText"></div>
+  </div>
+
+  <div class="card">
+    <h2>每日复盘</h2>
+    <button class="btn ghost" id="reviewBtn">生成今日反馈</button>
+    <div class="review-result" id="reviewResult"></div>
+  </div>
+
+  <footer>数据保存在本机浏览器 · 下次打开自动恢复</footer>
+</div>
+
+<script>
+(function () {
+  var STORE_KEY = 'workbench-plans-v1';
+
+  // ---------- 数据层 ----------
+  function loadStore() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
+    catch (e) { return {}; }
+  }
+  function saveStore() { localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function dateStr(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function getPlans() {
+    if (!store[currentDate]) store[currentDate] = [];
+    return store[currentDate];
+  }
+  function dayStats(key) {
+    var plans = store[key] || [];
+    var done = plans.filter(function (p) { return p.done; }).length;
+    return { total: plans.length, done: done, rate: plans.length ? Math.round(done / plans.length * 100) : null };
+  }
+
+  var store = loadStore();
+  var todayDate = new Date();
+  var today = dateStr(todayDate);
+  var currentDate = today;
+  var statsMode = 'week'; // 'week' | 'month'
+
+  // ---------- 元素 ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var planInput = $('planInput'), priorityInput = $('priorityInput'), addBtn = $('addBtn');
+  var planList = $('planList'), emptyTip = $('emptyTip');
+  var dateLabel = $('dateLabel'), todayTag = $('todayTag');
+  var progressFill = $('progressFill'), progressText = $('progressText'), progressPct = $('progressPct');
+  var reviewBtn = $('reviewBtn'), reviewResult = $('reviewResult');
+  var tabWeek = $('tabWeek'), tabMonth = $('tabMonth');
+  var statCards = $('statCards'), chart = $('chart'), summaryText = $('summaryText');
+
+  var PRIORITY = {
+    high: { label: '重要', cls: 'high' },
+    mid:  { label: '普通', cls: 'mid' },
+    low:  { label: '不急', cls: 'low' }
+  };
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // ---------- 主渲染（打勾后立即执行，进度条即时刷新） ----------
+  function render() {
+    var plans = getPlans();
+
+    dateLabel.textContent = currentDate;
+    todayTag.className = 'today-tag' + (currentDate === today ? ' show' : '');
+
+    planList.innerHTML = '';
+    var sorted = plans.slice().sort(function (a, b) {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      var w = { high: 0, mid: 1, low: 2 };
+      return w[a.priority] - w[b.priority];
+    });
+    sorted.forEach(function (p) {
+      var li = document.createElement('li');
+      li.className = 'plan-item' + (p.done ? ' done' : '');
+
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = p.done;
+      cb.onchange = function () { togglePlan(p.id); };
+
+      var span = document.createElement('span');
+      span.className = 'plan-text';
+      span.textContent = p.text;
+
+      var badge = document.createElement('span');
+      badge.className = 'badge ' + PRIORITY[p.priority].cls;
+      badge.textContent = PRIORITY[p.priority].label;
+
+      var del = document.createElement('button');
+      del.className = 'del-btn';
+      del.textContent = '×';
+      del.title = '删除';
+      del.onclick = function () { deletePlan(p.id); };
+
+      li.appendChild(cb); li.appendChild(span); li.appendChild(badge); li.appendChild(del);
+      planList.appendChild(li);
+    });
+    emptyTip.style.display = plans.length ? 'none' : 'block';
+
+    // 进度条：每次 render 都重算，勾选/删除/添加立即生效
+    var doneCount = plans.filter(function (p) { return p.done; }).length;
+    var pct = plans.length ? Math.round(doneCount / plans.length * 100) : 0;
+    progressFill.style.width = pct + '%';
+    progressFill.className = 'progress-fill' + (pct === 100 && plans.length ? ' full' : '');
+    progressPct.textContent = plans.length ? pct + '%' : '';
+    progressText.textContent = plans.length
+      ? (pct === 100 ? '全部完成，干得漂亮' : '已完成 ' + doneCount + ' / ' + plans.length + ' 项')
+      : '今天还没有计划';
+
+    reviewResult.className = 'review-result';
+    reviewResult.innerHTML = '';
+  }
+
+  // ---------- 统计渲染 ----------
+  function renderStats() {
+    if (statsMode === 'week') renderWeek(); else renderMonth();
+  }
+
+  function statCardHtml(num, label) {
+    return '<div class="stat-card"><div class="stat-num">' + num + '</div><div class="stat-label">' + label + '</div></div>';
+  }
+
+  function renderWeek() {
+    // 本周一 ~ 周日
+    var monday = new Date(todayDate);
+    var dow = (todayDate.getDay() + 6) % 7; // 周一=0
+    monday.setDate(todayDate.getDate() - dow);
+
+    var labels = ['一', '二', '三', '四', '五', '六', '日'];
+    var bars = '', totalAll = 0, doneAll = 0, daysWithPlans = 0, fullDays = 0;
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(monday); d.setDate(monday.getDate() + i);
+      var key = dateStr(d);
+      var s = dayStats(key);
+      var isFuture = key > today;
+      var cls = isFuture ? 'future' : (s.rate === null ? 'none' : '');
+      if (key === today) cls += ' today';
+      var h = (s.rate !== null && !isFuture) ? Math.max(s.rate, 3) : 3;
+      bars += '<div class="bar-col">' +
+        '<div class="bar ' + cls + '" style="height:' + h + '%" title="' + key + (s.rate !== null ? '：' + s.done + '/' + s.total : '：无计划') + '"></div>' +
+        '<div class="bar-label' + (key === today ? ' today' : '') + '">' + labels[i] + '</div></div>';
+      if (!isFuture && s.total > 0) {
+        totalAll += s.total; doneAll += s.done; daysWithPlans++;
+        if (s.done === s.total) fullDays++;
+      }
+    }
+    var rate = totalAll ? Math.round(doneAll / totalAll * 100) : 0;
+
+    statCards.innerHTML =
+      statCardHtml(rate + '%', '本周完成率') +
+      statCardHtml(doneAll + '/' + totalAll, '完成 / 总计划') +
+      statCardHtml(fullDays, '全部完成天数');
+
+    chart.className = 'chart';
+    chart.innerHTML = bars;
+
+    var summary;
+    if (!totalAll) {
+      summary = '本周还没有记录任何计划。从今天开始记，周末就能看到第一条曲线。';
+    } else {
+      summary = '本周已过去 ' + daysWithPlans + ' 个有记录的日子，共 <b>' + totalAll + '</b> 项计划，完成 <b>' + doneAll + '</b> 项（<b>' + rate + '%</b>）。';
+      if (rate >= 80) summary += '节奏很稳，保持住。';
+      else if (rate >= 50) summary += '完成过半，剩下几天可以把没做完的收一收。';
+      else summary += '完成率偏低，建议每天少列几件、先挑重要的做。';
+    }
+    summaryText.innerHTML = summary;
+  }
+
+  function renderMonth() {
+    var y = todayDate.getFullYear(), m = todayDate.getMonth();
+    var daysInMonth = new Date(y, m + 1, 0).getDate();
+    var monthLabel = y + ' 年 ' + (m + 1) + ' 月';
+
+    var bars = '', totalAll = 0, doneAll = 0, daysWithPlans = 0, fullDays = 0;
+    var bestDay = null, bestRatio = -1;
+    for (var i = 1; i <= daysInMonth; i++) {
+      var key = y + '-' + pad(m + 1) + '-' + pad(i);
+      var s = dayStats(key);
+      var isFuture = key > today;
+      var cls = isFuture ? 'future' : (s.rate === null ? 'none' : '');
+      if (key === today) cls += ' today';
+      var h = (s.rate !== null && !isFuture) ? Math.max(s.rate, 3) : 3;
+      var showLabel = (i === 1 || i % 5 === 0 || key === today);
+      bars += '<div class="bar-col">' +
+        '<div class="bar ' + cls + '" style="height:' + h + '%" title="' + key + (s.rate !== null ? '：' + s.done + '/' + s.total : '：无计划') + '"></div>' +
+        '<div class="bar-label' + (key === today ? ' today' : '') + '">' + (showLabel ? i : '') + '</div></div>';
+      if (!isFuture && s.total > 0) {
+        totalAll += s.total; doneAll += s.done; daysWithPlans++;
+        if (s.done === s.total) {
+          fullDays++;
+          if (s.total > bestRatio) { bestRatio = s.total; bestDay = key; }
+        }
+      }
+    }
+    var rate = totalAll ? Math.round(doneAll / totalAll * 100) : 0;
+
+    // 连续打卡（全部完成算打卡；今天还没列计划时从昨天往前数）
+    var streak = 0;
+    var cursor = new Date(todayDate);
+    var sToday = dayStats(today);
+    if (!(sToday.total > 0 && sToday.done === sToday.total)) cursor.setDate(cursor.getDate() - 1);
+    while (true) {
+      var k = dateStr(cursor);
+      var s = dayStats(k);
+      if (s.total > 0 && s.done === s.total) { streak++; cursor.setDate(cursor.getDate() - 1); }
+      else break;
+    }
+
+    statCards.innerHTML =
+      statCardHtml(rate + '%', '本月完成率') +
+      statCardHtml(doneAll + '/' + totalAll, '完成 / 总计划') +
+      statCardHtml(fullDays, '全部完成天数') +
+      statCardHtml(streak + ' 天', '连续打卡');
+
+    chart.className = 'chart month';
+    chart.innerHTML = bars;
+
+    var summary;
+    if (!totalAll) {
+      summary = monthLabel + '还没有记录。每天坚持记几件小事，月底这张图表会很有成就感。';
+    } else {
+      summary = '<b>' + monthLabel + '</b>：共记录 <b>' + totalAll + '</b> 项计划，完成 <b>' + doneAll + '</b> 项，完成率 <b>' + rate + '%</b>；' +
+        daysWithPlans + ' 天有记录，其中 <b>' + fullDays + '</b> 天全部完成。';
+      if (bestDay) summary += '最佳一天是 <b>' + bestDay.slice(5) + '</b>（完成 ' + bestRatio + ' 项）。';
+      if (streak >= 2) summary += '当前连续打卡 <b>' + streak + '</b> 天。';
+      if (rate >= 80) summary += '<br>整体状态很好，可以逐步给每天加一两件有挑战的事。';
+      else if (rate >= 50) summary += '<br>基本完成过半，下个月的抓手：重要的事排在上午做。';
+      else summary += '<br>完成率偏低，下个月先把每日计划压到 3–5 件，完成比列多更重要。';
+      if (daysWithPlans < 8) summary += '另外记录天数偏少，先养成「每天打开记一笔」的习惯。';
+    }
+    summaryText.innerHTML = summary;
+  }
+
+  // ---------- 操作 ----------
+  function refreshAll() { render(); renderStats(); }
+
+  function addPlan() {
+    var text = planInput.value.trim();
+    if (!text) { planInput.focus(); return; }
+    getPlans().push({
+      id: Date.now() + '' + Math.floor(Math.random() * 1000),
+      text: text,
+      priority: priorityInput.value,
+      done: false,
+      createdAt: new Date().toISOString()
+    });
+    planInput.value = '';
+    planInput.focus();
+    saveStore();
+    refreshAll();
+  }
+  function togglePlan(id) {
+    getPlans().forEach(function (p) { if (p.id === id) p.done = !p.done; });
+    saveStore();
+    refreshAll(); // 打勾后进度条与统计立即更新
+  }
+  function deletePlan(id) {
+    store[currentDate] = getPlans().filter(function (p) { return p.id !== id; });
+    saveStore();
+    refreshAll();
+  }
+  function shiftDay(offset) {
+    var d = new Date(currentDate + 'T00:00:00');
+    d.setDate(d.getDate() + offset);
+    currentDate = dateStr(d);
+    render();
+  }
+
+  // ---------- 每日复盘 ----------
+  function buildReview() {
+    var plans = getPlans();
+    if (!plans.length) {
+      return '<div class="review-block">这一天还没有记录任何计划。<br>先在上面添加几件事，晚上再来复盘。</div>';
+    }
+    var done = plans.filter(function (p) { return p.done; });
+    var undone = plans.filter(function (p) { return !p.done; });
+    var rate = Math.round(done.length / plans.length * 100);
+    var now = new Date();
+    var timeStr = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) +
+      ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+
+    var verdict;
+    if (rate === 100) verdict = '全部完成，今天很扎实。';
+    else if (rate >= 80) verdict = '完成度不错，差一点收尾。';
+    else if (rate >= 50) verdict = '完成过半，还有提升空间。';
+    else verdict = '完成率偏低，需要认真看一下原因。';
+
+    var html = '<div class="review-score">' + rate + '%</div>' +
+      '<div class="review-sub">完成 ' + done.length + ' / ' + plans.length + ' 项 · ' + verdict + '</div>';
+
+    if (done.length) {
+      html += '<div class="review-block"><span class="label" style="color:var(--green)">✓ 完成了：</span><ul>' +
+        done.map(function (p) { return '<li>' + escapeHtml(p.text) + '</li>'; }).join('') + '</ul></div>';
+    }
+    if (undone.length) {
+      html += '<div class="review-block"><span class="label" style="color:var(--red)">✗ 没完成：</span><ul>' +
+        undone.map(function (p) {
+          return '<li>' + escapeHtml(p.text) + (p.priority === 'high' ? '（重要）' : '') + '</li>';
+        }).join('') + '</ul></div>';
+    }
+
+    var tips = [];
+    var highUndone = undone.filter(function (p) { return p.priority === 'high'; });
+    if (highUndone.length) {
+      tips.push('有 ' + highUndone.length + ' 件「重要」的事没做完——明天把它们排在精力最好的时段，先做重要的再做普通的。');
+    }
+    if (plans.length >= 8 && rate < 70) {
+      tips.push('计划列了 ' + plans.length + ' 件但完成率不高——明天试着只列 3–5 件，把「做完」放在「列得多」前面。');
+    }
+    if (rate < 50 && plans.length < 8) {
+      tips.push('任务不多但完成率低——回头看看是没预估好时间，还是被什么事情打断了？把原因记下来，明天避开。');
+    }
+    if (rate >= 80 && rate < 100) {
+      tips.push('剩下的 ' + undone.length + ' 件如果 5 分钟内能做完，现在就顺手收掉；做不完就挪到明天的清单里。');
+    }
+    if (rate === 100 && plans.length >= 3) {
+      tips.push('连续保持这样的完成度，一周后可以回头看看：哪类计划总是轻松完成，可以逐步加码。');
+    }
+    if (plans.length > 0 && plans.length < 3 && rate === 100) {
+      tips.push('今天任务量偏少且全部完成——如果状态好，明天可以多安排一两件有挑战的事。');
+    }
+    if (!tips.length) tips.push('保持记录，数据积累几天后，复盘会更准。');
+
+    html += '<div class="review-tip"><b>建议：</b><br>' + tips.join('<br>') + '</div>';
+    html += '<div class="review-time">生成于 ' + timeStr + '</div>';
+    return html;
+  }
+
+  // ---------- 日历弹层（点日期展开，任选一天跳转） ----------
+  var calPop = $('calPop');
+  var calY = null, calM = null; // 日历当前查看的年月
+
+  function openCalendar() {
+    var d = new Date(currentDate + 'T00:00:00');
+    calY = d.getFullYear(); calM = d.getMonth();
+    renderCalendar();
+    calPop.className = 'cal-pop show';
+  }
+  function closeCalendar() { calPop.className = 'cal-pop'; }
+
+  function renderCalendar() {
+    var first = new Date(calY, calM, 1);
+    var daysInMonth = new Date(calY, calM + 1, 0).getDate();
+    var offset = (first.getDay() + 6) % 7; // 周一开头
+    var html = '<div class="cal-head">' +
+      '<button data-cal="-1">‹</button>' +
+      '<span class="cal-title">' + calY + ' 年 ' + (calM + 1) + ' 月</span>' +
+      '<button data-cal="1">›</button></div><div class="cal-grid">';
+    var wds = ['一', '二', '三', '四', '五', '六', '日'];
+    for (var w = 0; w < 7; w++) html += '<div class="cal-wd">' + wds[w] + '</div>';
+    for (var i = 0; i < offset; i++) html += '<div class="cal-day blank"></div>';
+    for (var d = 1; d <= daysInMonth; d++) {
+      var key = calY + '-' + pad(calM + 1) + '-' + pad(d);
+      var cls = 'cal-day';
+      if (key === today) cls += ' today';
+      if (key === currentDate) cls += ' selected';
+      var hasPlans = store[key] && store[key].length;
+      html += '<div class="' + cls + '" data-date="' + key + '">' + d +
+        (hasPlans ? '<span class="dot"></span>' : '') + '</div>';
+    }
+    html += '</div><div class="cal-foot"><button data-today="1">回到今天</button></div>';
+    calPop.innerHTML = html;
+  }
+
+  function jumpToDate(key) {
+    currentDate = key;
+    closeCalendar();
+    render();
+  }
+
+  calPop.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('[data-cal],[data-date],[data-today]') : null;
+    if (!t) return;
+    if (t.getAttribute('data-cal')) {
+      calM += parseInt(t.getAttribute('data-cal'), 10);
+      if (calM < 0) { calM = 11; calY--; }
+      if (calM > 11) { calM = 0; calY++; }
+      renderCalendar();
+    } else if (t.getAttribute('data-today')) {
+      jumpToDate(today);
+    } else if (t.getAttribute('data-date')) {
+      jumpToDate(t.getAttribute('data-date'));
+    }
+  });
+
+  dateLabel.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (calPop.className.indexOf('show') >= 0) closeCalendar(); else openCalendar();
+  });
+  document.addEventListener('click', function (e) {
+    if (!calPop.contains(e.target)) closeCalendar();
+  });
+
+  // ---------- 事件 ----------
+  addBtn.onclick = addPlan;
+  planInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') addPlan(); });
+  $('prevDay').onclick = function () { shiftDay(-1); };
+  $('nextDay').onclick = function () { shiftDay(1); };
+  reviewBtn.onclick = function () {
+    reviewResult.innerHTML = buildReview();
+    reviewResult.className = 'review-result show';
+  };
+  tabWeek.onclick = function () {
+    statsMode = 'week';
+    tabWeek.className = 'tab active'; tabMonth.className = 'tab';
+    renderStats();
+  };
+  tabMonth.onclick = function () {
+    statsMode = 'month';
+    tabMonth.className = 'tab active'; tabWeek.className = 'tab';
+    renderStats();
+  };
+
+  refreshAll();
+})();
+</script>
+</body>
+</html>
